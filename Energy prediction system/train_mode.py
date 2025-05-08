@@ -17,79 +17,65 @@ print("\nEncoding categorical columns...")
 df['House_Size'] = df['House_Size'].map({'small': 0, 'medium': 1, 'large': 2})
 df['Weather'] = df['Weather'].map({'cold': 0, 'moderate': 1, 'hot': 2})
 df['Heavy_Appliances'] = df['Heavy_Appliances'].map({'few': 0, 'many': 1})
-
 df['Heavy_Appliances'] = df['Heavy_Appliances'].fillna(df['Heavy_Appliances'].mode()[0])
 
-# 2. Check if there are any missing values
+# 2. Check for missing values
 print("\nChecking for missing values...")
 print(df.isnull().sum())
 
-# 3. Define features (X) and targets (y)
+# 3. Define features and targets
 X = df.drop(['Future_Units', 'Future_Bill'], axis=1)
 y_units = df['Future_Units']
 y_bill = df['Future_Bill']
 
-# 4. Split the data into training and testing sets
+# 4. Train-test split
 print("\nSplitting data...")
 X_train, X_test, y_units_train, y_units_test = train_test_split(X, y_units, test_size=0.2, random_state=42)
 _, _, y_bill_train, y_bill_test = train_test_split(X, y_bill, test_size=0.2, random_state=42)
 
 # 5. Initialize models
 print("\nTraining models...")
-rf_units_model = RandomForestRegressor(n_estimators=100, random_state=42)
-gb_units_model = GradientBoostingRegressor(n_estimators=100, random_state=42)
-lr_units_model = LinearRegression()
+models = {
+    "Random Forest": RandomForestRegressor(n_estimators=100, random_state=42),
+    "Gradient Boosting": GradientBoostingRegressor(n_estimators=100, random_state=42),
+    "Linear Regression": LinearRegression()
+}
 
-# 6. Train models for predicting Future Units
-rf_units_model.fit(X_train, y_units_train)
-gb_units_model.fit(X_train, y_units_train)
-lr_units_model.fit(X_train, y_units_train)
-
-# 7. Evaluate models for Units prediction
-rf_units_pred = rf_units_model.predict(X_test)
-gb_units_pred = gb_units_model.predict(X_test)
-lr_units_pred = lr_units_model.predict(X_test)
-
+# 6. Train and evaluate models for Future Units
 print("\n--- Future Units Consumed Prediction ---")
-print("Random Forest MAE:", mean_absolute_error(y_units_test, rf_units_pred))
-print("Random Forest R2 Score:", r2_score(y_units_test, rf_units_pred))
+unit_results = {}
+for name, model in models.items():
+    model.fit(X_train, y_units_train)
+    pred = model.predict(X_test)
+    mae = mean_absolute_error(y_units_test, pred)
+    r2 = r2_score(y_units_test, pred)
+    unit_results[name] = (model, mae, r2)
+    print(f"{name} MAE: {mae}")
+    print(f"{name} R2 Score: {r2}")
 
-print("Gradient Boosting MAE:", mean_absolute_error(y_units_test, gb_units_pred))
-print("Gradient Boosting R2 Score:", r2_score(y_units_test, gb_units_pred))
+# Select best model by R2 score
+best_units_model_name = max(unit_results.items(), key=lambda x: x[1][2])[0]
+best_units_model = unit_results[best_units_model_name][0]
+print(f"\nSelected Best Units Model: {best_units_model_name}")
 
-print("Linear Regression MAE:", mean_absolute_error(y_units_test, lr_units_pred))
-print("Linear Regression R2 Score:", r2_score(y_units_test, lr_units_pred))
-
-best_units_model = rf_units_model
-
-# 8. Now Train models for predicting Future Bill
-rf_bill_model = RandomForestRegressor(n_estimators=100, random_state=42)
-gb_bill_model = GradientBoostingRegressor(n_estimators=100, random_state=42)
-lr_bill_model = LinearRegression()
-
-rf_bill_model.fit(X_train, y_bill_train)
-gb_bill_model.fit(X_train, y_bill_train)
-lr_bill_model.fit(X_train, y_bill_train)
-
-# Predict
-rf_bill_pred = rf_bill_model.predict(X_test)
-gb_bill_pred = gb_bill_model.predict(X_test)
-lr_bill_pred = lr_bill_model.predict(X_test)
-
+# 7. Train and evaluate models for Future Bill
 print("\n--- Future Bill Prediction ---")
-print("Random Forest MAE:", mean_absolute_error(y_bill_test, rf_bill_pred))
-print("Random Forest R2 Score:", r2_score(y_bill_test, rf_bill_pred))
+bill_results = {}
+for name, model in models.items():
+    model.fit(X_train, y_bill_train)
+    pred = model.predict(X_test)
+    mae = mean_absolute_error(y_bill_test, pred)
+    r2 = r2_score(y_bill_test, pred)
+    bill_results[name] = (model, mae, r2)
+    print(f"{name} MAE: {mae}")
+    print(f"{name} R2 Score: {r2}")
 
-print("Gradient Boosting MAE:", mean_absolute_error(y_bill_test, gb_bill_pred))
-print("Gradient Boosting R2 Score:", r2_score(y_bill_test, gb_bill_pred))
+# Select best model by R2 score
+best_bill_model_name = max(bill_results.items(), key=lambda x: x[1][2])[0]
+best_bill_model = bill_results[best_bill_model_name][0]
+print(f"\nSelected Best Bill Model: {best_bill_model_name}")
 
-print("Linear Regression MAE:", mean_absolute_error(y_bill_test, lr_bill_pred))
-print("Linear Regression R2 Score:", r2_score(y_bill_test, lr_bill_pred))
-
-# Choose best model (Here RandomForest again)
-best_bill_model = rf_bill_model
-
-# 9. Save the trained models
+# 8. Save the best models
 print("\nSaving the best models...")
 with open('units_model.pkl', 'wb') as f:
     pickle.dump(best_units_model, f)
@@ -97,4 +83,6 @@ with open('units_model.pkl', 'wb') as f:
 with open('bill_model.pkl', 'wb') as f:
     pickle.dump(best_bill_model, f)
 
-print("\nTraining Completed Successfully! Models are saved as 'units_model.pkl' and 'bill_model.pkl'. 🎯")
+print("\n✅ Training Completed Successfully!")
+print("Best Units Model saved as 'units_model.pkl'")
+print("Best Bill Model saved as 'bill_model.pkl'")
